@@ -1,0 +1,628 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+tidyverse
+================
+sourced from https://github.com/michaellevy/tidyverse_talk/blob/master/tidyverse.md
+
+What is the tidyverse?
+----------------------
+
+~~Hadleyverse~~
+
+The tidyverse is a suite of R tools that follow a tidy philosophy:
+
+### Tidy data
+
+Put data in data frames
+
+-   Each type of observation gets a data frame
+-   Each variable gets a column
+-   Each observation gets a row
+
+### Tidy APIs
+
+Functions should be consistent and easily (human) readable
+
+-   Take one step at a time
+-   Connect simple steps with the pipe
+-   Referential transparency
+
+### Okay but really, what is it?
+
+Suite of ~20 packages that provide consistent, user-friendly, smart-default tools to do most of what most people do in R.
+
+-   Core packages: ggplot2, dplyr, tidyr, readr, purrr, tibble
+-   Specialized data manipulation: hms, stringr, lubridate, forcats
+-   Data import: DBI, haven, httr, jsonlite, readxl, rvest, xml2
+-   Modeling: modelr, broom
+
+`install.packages(tidyverse)` installs all of the above packages.
+
+`library(tidyverse)` attaches only the core packages.
+
+Why tidyverse?
+--------------
+
+-   Consistency
+    -   e.g. All `stringr` functions take string first
+    -   e.g. Many functions take data.frame first -&gt; piping
+        -   Faster to write
+        -   Easier to read
+    -   Tidy data: Imposes good practices
+    -   Type specificity
+-   You probably use some of it already. Synergize.
+-   Implements simple solutions to common problems (e.g. `purrr::transpose`)
+-   Smarter defaults
+    -   e.g. `utils::write.csv(row.names = FALSE)` = `readr::write_csv()`
+-   Runs fast (thanks to `Rcpp`)
+-   Interfaces well with other tools (e.g. Spark with `dplyr` via `sparklyr`)
+
+`tibble`
+--------
+
+> A modern reimagining of data frames.
+
+```{r}
+library(tidyverse, quietly = T)
+```
+
+```{r}
+tdf = tibble(x = 1:1e4, y = rnorm(1e4))  # == data_frame(x = 1:1e4, y = rnorm(1e4))
+class(tdf)
+```
+
+    ## [1] "tbl_df"     "tbl"        "data.frame"
+
+Tibbles print politely.
+
+```{r}
+tdf
+```
+
+-   Can customize print methods with `print(tdf, n = rows, width = cols)`
+
+-   Set default with `options(tibble.print_max = rows, tibble.width = cols)`
+
+Tibbles have some convenient and consistent defaults that are different from base R data.frames.
+
+#### strings as factors
+
+```{r}
+dfs = list(
+  df = data.frame(abc = letters[1:3], xyz = letters[24:26], stringsAsFactors = FALSE),
+  tbl = tibble(abc = letters[1:3], xyz = letters[24:26])
+)
+sapply(dfs, function(d) class(d$abc))
+```
+
+
+#### partial matching of names
+
+```{r}
+sapply(dfs, function(d) d$a)
+```
+
+#### type consistency
+
+```{r}
+sapply(dfs, function(d) class(d[, "abc"]))
+```
+
+
+Note that tidyverse import functions (e.g. `readr::read_csv`) default to tibbles and that *this can break existing code*.
+
+#### List-columns!
+
+```{r}
+a <- tibble(ints = 1:5,
+       powers = lapply(1:5, function(x) x^(1:x)))
+
+a[[5,2]]
+a
+```
+
+
+The pipe `%>%`
+--------------
+
+Sends the output of the LHS function to the first argument of the RHS function.
+
+```{r}
+1:8 %>%
+  sum() %>%
+  sqrt()
+
+sqrt(sum(1:8))
+```
+
+
+`dplyr`
+-------
+
+Common data(frame) manipulation tasks.
+
+Four core "verbs": filter, select, arrange, group\_by + summarize, plus many more convenience functions.
+
+```{r}
+library(ggplot2movies)
+str(movies)
+```
+
+```{r}
+filter(movies, length > 360)
+
+#movies[,movies$length > 360]
+
+movies %>%
+  filter(length > 360)
+```
+
+```{r}
+movies %>%
+  filter(length > 360) %>%
+  select(title, rating, votes)
+```
+
+```{r}
+movies %>%
+  filter(Animation == 1, votes > 1000) %>%
+  select(title, rating) %>%
+  arrange(desc(rating))
+```
+
+
+
+`summarize` makes `aggregate` and `tapply` functionality easier, and the output is always a data frame.
+
+```{r}
+movies %>%  
+  filter(mpaa != "") %>%
+  group_by(year, mpaa) %>%
+  summarize(count = n(), 
+            avg_budget = mean(budget, na.rm = TRUE),
+            avg_rating = mean(rating, na.rm = TRUE)) %>%
+  arrange(desc(year), mpaa) 
+
+
+
+```
+
+ 
+
+`count` for frequency tables. Note the consistent API and easy readability vs. `table`.
+
+```{r}
+filter(movies, mpaa != "") %>%
+  count(year, mpaa, Animation, sort = TRUE)
+```
+
+ 
+```{r}
+basetab = with(movies[movies$mpaa != "", ], table(year, mpaa, Animation))
+basetab[1:5, , ]
+```
+
+### joins
+
+`dplyr` also does multi-table joins and can connect to various types of databases.
+
+```{r}
+t1 = data_frame(alpha = letters[1:6], num = 1:6)
+t2 = data_frame(alpha = letters[4:10], num = 4:10)
+t3 <- full_join(t1, t2, by = "alpha", suffix = c("_t1", "_t2"))
+
+t3
+
+t3 %>% mutate(tot = ifelse(is.na(num_t1),0,num_t1) + ifelse(is.na(num_t2),0,num_t2))
+```
+
+ 
+Super-secret pro-tip: You can `group_by` %&gt;% `mutate` to accomplish a summarize + join
+
+```{r}
+
+data <- data_frame(group = sample(letters[1:3], 10, replace = TRUE),
+           value = rnorm(10))
+data
+
+data %>%
+  group_by(group) %>%
+  mutate(group_average = mean(value))
+
+#the alternative is a 2-step process
+
+averages <- data %>% group_by(group) %>% summarize(group_average = mean(value))
+data %>% inner_join(averages)
+
+```
+
+
+`tidyr`
+-------
+
+Latest generation of `reshape`. `gather` to make wide table long, `spread` to make long tables wide.
+
+We'll use a Tuberculosis dataset from the World Health Organization.  This dataset used to be available in the base install of R, but we'll have to get it from an external source.  Fortunately, the tidyverse gives us the tools to do that easily.
+
+This data is freely availble at https://www.who.int/tb/country/data/download/en/ ,and a data dictionary can be found at https://extranet.who.int/tme/generateCSV.asp?ds=dictionary
+
+```{r}
+
+who <- read_csv('https://extranet.who.int/tme/generateCSV.asp?ds=notifications')
+
+#let's try that again, but give the proper column types
+
+col_types <- cols(
+  .default = col_double(),
+  country = col_character(),
+  iso2 = col_character(),
+  iso3 = col_character(),
+  iso_numeric = col_character(),
+  g_whoregion = col_character(),
+  new_sn_sexunk04 = col_double(),
+  new_sn_sexunk514 = col_double(),
+  new_sn_sexunk014 = col_double(),
+  new_sn_sexunk15plus = col_double(),
+  new_ep_m04 = col_double(),
+  new_ep_sexunkageunk = col_double(),
+  rdxsurvey_newinc = col_double(),
+  rdxsurvey_newinc_rdx = col_double(),
+  hiv_ipt_reg_all = col_double(),
+  hiv_tbdetect = col_double()
+)
+
+who <- read_csv('https://extranet.who.int/tme/generateCSV.asp?ds=notifications', col_types = col_types)
+who <- who[,c(1:3, 6, 27:33, 37:43, 47:53, 58:64, 73:79, 84:90)]
+
+str(who)# Tuberculosis data from the WHO
+
+
+```
+
+ 
+```{r}
+who %>%
+  gather(group, cases, -country, -iso2, -iso3, -year)
+
+who %>%
+  gather(group, cases, -country, -iso2, -iso3, -year) %>% 
+  filter(!is.na(cases))
+
+```
+
+
+
+`ggplot2`
+---------
+
+If you don't already know and love it, check out [one of](https://d-rug.github.io/blog/2012/ggplot-introduction) [our](https://d-rug.github.io/blog/2013/xtsmarkdown) [previous](https://d-rug.github.io/blog/2013/formatting-plots-for-pubs) [talks](https://d-rug.github.io/blog/2015/ggplot-tutorial-johnston) on ggplot or any of the excellent resources on the internet.
+
+Note that the pipe and consistent API make it easy to combine functions from different packages, and the whole thing is quite readable.
+
+```{r}
+who %>%
+  select(-iso2, -iso3) %>%
+  gather(group, cases, -country, -year) %>%
+  count(country, year, wt = cases) %>%
+  ggplot(aes(x = year, y = n, group = country)) +
+  geom_line(size = .2) + scale_y_log10()
+
+who.summary <- who %>%
+  select(-iso2) %>%
+  gather(group, cases, -country, -iso3, -year) %>%
+  filter(!is.na(cases)) %>%
+  count(year, wt = cases)
+
+who.summary
+
+who.summary %>%
+  ggplot(aes(x=year, y=n)) + geom_line() + scale_y_log10()
+
+```
+
+
+
+`readr`
+-------
+
+For reading flat files. Faster than base with smarter defaults.
+
+```{r}
+bigdf = data_frame(int = 1:1e6, 
+                   squares = int^2, 
+                   letters = sample(letters, 1e6, replace = TRUE))
+bigdf
+```
+
+```{r}
+system.time(
+  write.csv(bigdf, "base-write.csv")
+)
+```
+
+ 
+
+```{r}
+system.time(
+  write_csv(bigdf, "readr-write.csv")
+)
+```
+
+
+
+```{r}
+read.csv("base-write.csv", nrows = 3)
+```
+
+ 
+
+```{r}
+read_csv("readr-write.csv", n_max = 3)
+```
+
+
+
+`broom`
+-------
+
+`broom` is a convenient little package to work with model results. Two functions I find useful are `tidy` to extract model results and `augment` to add residuals, predictions, etc. to a data.frame.
+
+```{r}
+d = data_frame(x = runif(20, 0, 10), 
+               y = 2 * x + rnorm(20))
+d
+
+
+qplot(x, y, data = d)
+```
+
+
+
+### `tidy`
+
+```{r}
+library(broom)  # Not attached with tidyverse
+model <- lm(y ~ x, d)
+summary(model)
+
+tidy(model)
+```
+
+### `augment`
+
+i.e. The function formerly known as `fortify`.
+
+```{r}
+aug = augment(model)
+aug
+```
+
+ 
+
+`purrr`
+-------
+
+`purrr` is kind of like `dplyr` for lists. It helps you repeatedly apply functions. Like the rest of the tidyverse, nothing you can't do in base R, but `purrr` makes the API consistent, encourages type specificity, and provides some nice shortcuts and speed ups.
+
+```{r}
+df = data_frame(fun = rep(c(lapply, map), 2),
+                n = rep(c(1e5, 1e7), each = 2),
+                comp_time = map2(fun, n, ~system.time(.x(1:.y, sqrt))))
+df$comp_time
+```
+
+
+
+### `map`
+
+Vanilla `map` is a slightly improved version of `lapply`. Do a function on each item in a list.
+
+```{r}
+map(1:4, log)
+```
+
+ 
+Can supply additional arguments as with `(x)apply`
+
+```{r}
+map(1:4, log, base = 2)
+```
+
+ 
+Can compose anonymous functions like `(x)apply`, either the old way or with a new formula shorthand.
+
+```{r}
+map(1:4, ~ log(4, base = .x))  # == map(1:4, function(x) log(4, base = x))
+```
+
+
+
+`map` always returns a list. `map_xxx` type-specifies the output type and simplifies the list to a vector.
+
+```{r}
+map_dbl(1:4, log, base = 2)
+```
+
+ 
+
+And throws an error if any output isn't of the expected type (which is a good thing!).
+
+```{r}
+#map_int(1:4, log, base = 2)
+
+   ## Error: Can't coerce element 1 from a double to a integer
+```
+
+ 
+
+`map2` is like `mapply` -- apply a function over two lists in parallel. `map_n` generalizes to any number of lists.
+
+```{r}
+fwd = 1:10
+bck = 10:1
+map2_dbl(fwd, bck, `^`)
+```
+
+ 
+
+`map_if` tests each element on a function and if true applies the second function, if false returns the original element.
+
+```{r}
+data_frame(ints = 1:5, lets = letters[1:5], sqrts = ints^.5) %>%
+  map_if(is.numeric, ~ .x^2) 
+```
+
+ 
+### Putting `map` to work
+
+Split the movies data frame by mpaa rating, fit a linear model to each data frame, and organize the model results in a data frame.
+
+```{r}
+movies %>% 
+  filter(mpaa != "") %>%
+  split(.$mpaa) %>%
+  map(~ lm(rating ~ budget, data = .)) %>%
+  map_df(tidy, .id = "mpaa-rating") %>%
+  arrange(term)
+```
+
+ 
+List-columns make it easier to organize complex datasets. Can `map` over list-columns right in `data_frame`/`tibble` creation. And if you later want to calculate something else, everything is nicely organized in the data frame.
+
+```{r}
+d = 
+  data_frame(
+    dist = c("normal", "poisson", "chi-square"),
+    funs = list(rnorm, rpois, rchisq),
+    samples = map(funs, ~.(100, 5)),
+    mean = map_dbl(samples, mean),
+    var = map_dbl(samples, var)
+  )
+d$median = map_dbl(d$samples, median)
+d
+```
+
+ 
+Let's see if we can really make this purrr... Fit a linear model of diamond price by every combination of two predictors in the dataset and see which two predict best.
+
+```{r}
+train = sample(nrow(diamonds), floor(nrow(diamonds) * .67))
+setdiff(names(diamonds), "price") %>%
+  combn(2, paste, collapse = " + ") %>%
+  structure(., names = .) %>%
+  map(~ formula(paste("price ~ ", .x))) %>%
+  map(lm, data = diamonds[train, ]) %>%
+  map_df(augment, newdata = diamonds[-train, ], .id = "predictors") %>%
+  group_by(predictors) %>%
+  summarize(rmse = sqrt(mean((price - .fitted)^2))) %>%
+  arrange(rmse)
+```
+
+ 
+### Type-stability
+
+We have seen that we can use map\_lgl to ensure we get a logical vector, map\_chr to ensure we get a character vector back, etc. Type stability is like a little built-in unit test. You make sure you're getting what you think you are, even in the middle of a pipeline or function. Here are two more type-stable function implemented in `purrr`.
+
+#### `flatten`
+
+Like `unlist` but can specify output type, and never recurses.
+
+```{r}
+map(-1:3, ~.x ^ seq(-.5, .5, .5)) %>%
+  flatten_dbl()
+```
+
+    ##  [1]       NaN 1.0000000       NaN       Inf 1.0000000 0.0000000 1.0000000
+    ##  [8] 1.0000000 1.0000000 0.7071068 1.0000000 1.4142136 0.5773503 1.0000000
+    ## [15] 1.7320508
+
+#### `safely`
+
+```{r}
+junk = list(letters, 1:20, median)
+# map(junk, ~ log(.x))
+
+    ## Error in log(.x): non-numeric argument to mathematical function
+```
+
+ 
+
+-   `safely` "catches" errors and always "succeeds".
+-   `try` does the same, but either returns the value or a try-error object.
+-   `safely` is type-stable. It always returns a length-two list with one object NULL.
+
+```{r}
+safe = map(junk, ~ safely(log)(.x))  # Note the different syntax from try(log(.x)). `safely(log)` creates a new function.
+safe
+```
+
+ 
+#### `transpose` a list!
+
+Now we could conveniently move on where the function succeeded, particularly using `map_if`. To get that logical vector for the `map_if` test, we can use the `transpose` function, which inverts a list.
+
+```{r}
+transpose(safe)
+```
+
+ 
+```{r}
+map_if(transpose(safe)$result, ~!is.null(.x), median)
+```
+
+ 
+`stringr`
+---------
+
+All your string manipulation and regex functions with a consistent API.
+
+```{r}
+library(stringr)  # not attached with tidyverse
+fishes <- c("one fish", "two fish", "red fish", "blue fish")
+str_detect(fishes, "two")
+```
+
+ 
+
+```{r}
+str_replace_all(fishes, "fish", "banana")
+```
+
+ 
+
+```{r}
+fishes
+str_extract(fishes, "[a-z]\\s")
+```
+
+    
+
+Let's put that string manipulation engine to work. Remember the annoying column names in the WHO data? They look like this new\_sp\_m014, new\_sp\_m1524, new\_sp\_m2534, where "new" or "new\_" doesn't mean anything, the following 2-3 letters indicate the test used, the following letter indicates the gender, and the final 2-4 numbers indicates the age-class. A string-handling challenge if ever there was one. Let's separate it out and plot the cases by year, gender, age-class, and test-method.
+
+```{r}
+who %>%
+  select(-iso2, -iso3) %>%
+  gather(group, cases, -country, -year ) %>%
+  mutate(group = str_replace(group, "new_*", ""),
+         method = str_extract(group, "[a-z]+"),
+         gender = str_sub(str_extract(group, "_[a-z]"), 2, 2),
+         age = str_extract(group, "[0-9]+"),
+         age = ifelse(str_length(age) > 2,
+                      str_c(str_sub(age, 1, -3), str_sub(age, -2, -1), sep = "-"),
+                      str_c(age, "+"))) %>%
+  group_by(year, gender, age, method) %>%
+  summarize(total_cases = sum(cases, na.rm = TRUE)) %>%
+  ggplot(aes(x = year, y = total_cases, linetype = gender)) +
+  geom_line() +
+  facet_grid(method ~ age,
+             labeller = labeller(.rows = label_both, .cols = label_both)) +
+  scale_y_log10() +
+  theme_light() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+
+
