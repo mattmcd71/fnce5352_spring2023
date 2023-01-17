@@ -251,31 +251,33 @@ This data is freely availble at https://www.who.int/tb/country/data/download/en/
 
 ```{r}
 
-who <- read_csv('https://extranet.who.int/tme/generateCSV.asp?ds=notifications')
+# who <- read_csv('https://extranet.who.int/tme/generateCSV.asp?ds=notifications')
+# 
+# #let's try that again, but give the proper column types
+# 
+# col_types <- cols(
+#   .default = col_double(),
+#   country = col_character(),
+#   iso2 = col_character(),
+#   iso3 = col_character(),
+#   iso_numeric = col_character(),
+#   g_whoregion = col_character(),
+#   new_sn_sexunk04 = col_double(),
+#   new_sn_sexunk514 = col_double(),
+#   new_sn_sexunk014 = col_double(),
+#   new_sn_sexunk15plus = col_double(),
+#   new_ep_m04 = col_double(),
+#   new_ep_sexunkageunk = col_double(),
+#   rdxsurvey_newinc = col_double(),
+#   rdxsurvey_newinc_rdx = col_double(),
+#   hiv_ipt_reg_all = col_double(),
+#   hiv_tbdetect = col_double()
+# )
+# 
+# who <- read_csv('https://extranet.who.int/tme/generateCSV.asp?ds=notifications', col_types = col_types)
+# who <- who[,c(1:3, 6, 27:33, 37:43, 47:53, 58:64, 73:79, 84:90)]
 
-#let's try that again, but give the proper column types
-
-col_types <- cols(
-  .default = col_double(),
-  country = col_character(),
-  iso2 = col_character(),
-  iso3 = col_character(),
-  iso_numeric = col_character(),
-  g_whoregion = col_character(),
-  new_sn_sexunk04 = col_double(),
-  new_sn_sexunk514 = col_double(),
-  new_sn_sexunk014 = col_double(),
-  new_sn_sexunk15plus = col_double(),
-  new_ep_m04 = col_double(),
-  new_ep_sexunkageunk = col_double(),
-  rdxsurvey_newinc = col_double(),
-  rdxsurvey_newinc_rdx = col_double(),
-  hiv_ipt_reg_all = col_double(),
-  hiv_tbdetect = col_double()
-)
-
-who <- read_csv('https://extranet.who.int/tme/generateCSV.asp?ds=notifications', col_types = col_types)
-who <- who[,c(1:3, 6, 27:33, 37:43, 47:53, 58:64, 73:79, 84:90)]
+who <- read_csv(here::here('Lecture1', 'who.csv'))
 
 str(who)# Tuberculosis data from the WHO
 
