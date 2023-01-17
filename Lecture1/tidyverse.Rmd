@@ -287,10 +287,10 @@ str(who)# Tuberculosis data from the WHO
  
 ```{r}
 who %>%
-  gather(group, cases, -country, -iso2, -iso3, -year)
+  pivot_longer(new_sp_m014:new_ep_f65, names_to = 'group', values_to = 'cases')
 
 who %>%
-  gather(group, cases, -country, -iso2, -iso3, -year) %>% 
+  pivot_longer(new_sp_m014:new_ep_f65, names_to = 'group', values_to = 'cases') %>%
   filter(!is.na(cases))
 
 ```
@@ -307,14 +307,14 @@ Note that the pipe and consistent API make it easy to combine functions from dif
 ```{r}
 who %>%
   select(-iso2, -iso3) %>%
-  gather(group, cases, -country, -year) %>%
+  pivot_longer(new_sp_m014:new_ep_f65, names_to = 'group', values_to = 'cases') %>%
   count(country, year, wt = cases) %>%
   ggplot(aes(x = year, y = n, group = country)) +
   geom_line(size = .2) + scale_y_log10()
 
 who.summary <- who %>%
   select(-iso2) %>%
-  gather(group, cases, -country, -iso3, -year) %>%
+  pivot_longer(new_sp_m014:new_ep_f65, names_to = 'group', values_to = 'cases') %>%
   filter(!is.na(cases)) %>%
   count(year, wt = cases)
 
@@ -333,7 +333,7 @@ who.summary %>%
 For reading flat files. Faster than base with smarter defaults.
 
 ```{r}
-bigdf = data_frame(int = 1:1e6, 
+bigdf = tibble(int = 1:1e6, 
                    squares = int^2, 
                    letters = sample(letters, 1e6, replace = TRUE))
 bigdf
@@ -410,7 +410,7 @@ aug
 `purrr` is kind of like `dplyr` for lists. It helps you repeatedly apply functions. Like the rest of the tidyverse, nothing you can't do in base R, but `purrr` makes the API consistent, encourages type specificity, and provides some nice shortcuts and speed ups.
 
 ```{r}
-df = data_frame(fun = rep(c(lapply, map), 2),
+df = tibble(fun = rep(c(lapply, map), 2),
                 n = rep(c(1e5, 1e7), each = 2),
                 comp_time = map2(fun, n, ~system.time(.x(1:.y, sqrt))))
 df$comp_time
