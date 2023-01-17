@@ -287,10 +287,10 @@ str(who)# Tuberculosis data from the WHO
  
 ```{r}
 who %>%
-  gather(group, cases, -country, -iso2, -iso3, -year)
+  pivot_longer(new_sp_m014:new_ep_f65, names_to = 'group', values_to = 'cases')
 
 who %>%
-  gather(group, cases, -country, -iso2, -iso3, -year) %>% 
+  pivot_longer(new_sp_m014:new_ep_f65, names_to = 'group', values_to = 'cases') %>%
   filter(!is.na(cases))
 
 ```
@@ -307,14 +307,14 @@ Note that the pipe and consistent API make it easy to combine functions from dif
 ```{r}
 who %>%
   select(-iso2, -iso3) %>%
-  gather(group, cases, -country, -year) %>%
+  pivot_longer(new_sp_m014:new_ep_f65, names_to = 'group', values_to = 'cases') %>%
   count(country, year, wt = cases) %>%
   ggplot(aes(x = year, y = n, group = country)) +
   geom_line(size = .2) + scale_y_log10()
 
 who.summary <- who %>%
   select(-iso2) %>%
-  gather(group, cases, -country, -iso3, -year) %>%
+  pivot_longer(new_sp_m014:new_ep_f65, names_to = 'group', values_to = 'cases') %>%
   filter(!is.na(cases)) %>%
   count(year, wt = cases)
 
