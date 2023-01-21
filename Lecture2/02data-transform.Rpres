@@ -1,0 +1,287 @@
+Data Transformation
+========================================================
+author: Matthew McDonald
+date: 1/24/2023
+autosize: true
+
+<style>
+.nyc-flights pre code {
+  font-size: 1.5em;
+}
+</style>
+
+Setup
+===========
+
+Take careful note of the conflicts message that's printed when you load the tidyverse.
+
+It tells you that dplyr overwrites some functions in base R.
+
+If you want to use the base version of these functions after loading dplyr, you'll need to use their full names: `stats::filter()` and `stats::lag()`.
+****
+```{r setup}
+library(nycflights13)
+library(tidyverse)
+```
+
+nycflights
+============
+class: nyc-flights
+
+This data frame contains all `r format(nrow(nycflights13::flights), big.mark = ",")` flights that departed from New York City in 2013.
+
+The data comes from the US [Bureau of Transportation Statistics](http://www.transtats.bts.gov/DatabaseInfo.asp?DB_ID=120&Link=0), and is documented in `?flights`.
+
+```{r}
+flights
+```
+
+Tibbles
+==========
+
+Tibbles are a special type of data frame designed by the tidyverse team to avoid some common data.frame gotchas.
+
+Data Types in the nycflights data are:
+
+-   `int` stands for integer.
+
+-   `dbl` stands for double, a vector of real numbers.
+
+-   `chr` stands for character, a vector of strings.
+
+-   `dttm` stands for date-time (a date + a time).
+
+There are three other common types that aren't used here but you'll encounter later in the book:
+
+-   `lgl` stands for logical, a vector that contains only `TRUE` or `FALSE`.
+
+-   `fctr` stands for factor, which R uses to represent categorical variables with fixed possible values.
+
+-   `date` stands for date.
+
+dplyr functions
+==========
+
+All dplyr verbs work the same way:
+
+1.  The first argument is a data frame.
+
+2.  The subsequent arguments describe what to do with the data frame, using the variable names (without quotes).
+
+3.  The result is a new data frame.
+
+dplyr function groups
+=========
+
+-   Functions that operate on **rows**: `filter()` subsets rows based on the values of the columns and `arrange()` changes the order of the rows.
+
+-   Functions that operate on **columns**: `mutate()` creates new columns, `select()` columns, `rename()` changes their names, and `relocate()` changes their positions.
+
+-   Functions that operate on **groups**: `group_by()` divides data up into groups for analysis, and `summarise()` reduces each group to a single row.
+
+-   Functions that operate on **tables**, like the join functions and the set operations.
+
+Row Operators
+============
+
+filter()
+===========
+class: nyc-flights
+
+`filter()` allows you to choose rows based on their values.
+
+The first argument is the name of the data frame.
+
+The second and subsequent arguments are the expressions that filter the data frame.
+
+For example, we can select all flights on January 1st with:
+
+```{r}
+filter(flights, month == 1, day == 1)
+```
+
+filter() Assignment
+========
+
+dplyr functions never modify their inputs, so if you want to save the result, you'll need to use the assignment operator, `<-`:
+
+```{r}
+jan1 <- filter(flights, month == 1, day == 1)
+```
+
+Comparison Operators
+========
+
+To use filtering effectively, you have to know how to select the observations that you want using the comparison operators.
+
+R provides the standard suite: `>`, `>=`, `<`, `<=`, `!=` (not equal), and `==` (equal).
+
+It also provides `%in%`: `filter(df, x %in% c(a, b, c))` will return all rows where `x` is `a`, `b`, or `c`.
+
+When you're starting out with R, the easiest mistake to make is to use `=` instead of `==` when testing for equality.
+`filter()` will let you know when this happens:
+
+
+arrange()
+=============
+class: nyc-flights
+`arrange()` works similarly to `filter()` except that instead of selecting rows, it changes their order.
+
+```{r}
+arrange(flights, year, month, day)
+```
+
+You can use `desc()` to re-order by a column in descending order:
+
+```{r eval=FALSE}
+arrange(flights, desc(dep_delay))
+```
+
+
+Column Operators
+=========
+
+`mutate()`, `select()`, `rename()`, and `relocate()` affect the columns (the variables) without changing the rows (the observations).
+
+`mutate()` creates new variables that are functions of the existing variables; `select()`, `rename()`, and `relocate()` changes which variables are present, their names, and their positions.
+
+mutate()
+=========
+class: nyc-flights
+The job of `mutate()` is to add new columns that are functions of existing column.
+
+```{r eval=FALSE}
+mutate(flights,
+  gain = dep_delay - arr_delay,
+  speed = distance / air_time * 60
+)
+```
+```{r echo=FALSE}
+mutate(flights,
+  gain = dep_delay - arr_delay,
+  speed = distance / air_time * 60
+) %>% select(year, month, day, dep_delay, arr_delay, distance , air_time, gain, speed)
+```
+
+
+select()
+=========
+
+`select()` allows you to rapidly zoom in on a useful subset using operations based on the names of the variables.
+
+```{r eval=FALSE}
+# Select columns by name
+select(flights, year, month, day)
+
+# Select all columns between year and day (inclusive)
+select(flights, year:day)
+
+# Select all columns except those from year to day (inclusive)
+select(flights, -(year:day))
+```
+
+select() Helper Functions
+============
+
+There are a number of helper functions you can use within `select()`:
+
+-   `starts_with("abc")`: matches names that begin with "abc".
+
+-   `ends_with("xyz")`: matches names that end with "xyz".
+
+-   `contains("ijk")`: matches names that contain "ijk".
+
+-   `num_range("x", 1:3)`: matches `x1`, `x2` and `x3`.
+
+rename()
+=========
+
+If you just want to keep all the existing variables and just want to rename a few, you can use `rename()` instead of `select()`:
+
+```{r eval=FALSE}
+rename(flights, tail_num = tailnum)
+```
+
+
+relocate()
+=========
+
+You can move variables around with `relocate`.
+By default it moves variables to the front:
+
+```{r eval=FALSE}
+relocate(flights, time_hour, air_time)
+```
+
+Like with `mutate()`, you can use the `.before` and `.after` arguments to choose where to place them:
+
+```{r eval=FALSE}
+relocate(flights, year:dep_time, .after = time_hour)
+relocate(flights, starts_with("arr"), .before = dep_time)
+```
+
+
+Group Operators
+=========
+
+The real power of dplyr comes when you add grouping into the mix.
+
+The two key functions are `group_by()` and `summarise()`, but as you'll learn `group_by()` affects many other dplyr verbs in interesting ways.
+
+group_by()
+=========
+class: nyc-flights
+
+Use `group_by()` to divide your dataset into groups meaningful for your analysis
+
+`group_by()` doesn't change the data but, if you look closely, you'll notice that it's now "grouped by" month.
+
+The reason to group your data is because it changes the operation of subsequent verbs.
+
+```{r}
+by_month <- group_by(flights, month)
+by_month
+```
+
+summarise()
+=========
+class: nyc-flights
+The most important operation that you might apply to grouped data is a summary. It collapses each group to a single row.
+
+```{r}
+summarise(by_month, delay = mean(dep_delay, na.rm = TRUE))
+```
+
+Counts Using summarise()
+==================
+class: nyc-flights
+
+You can create any number of summaries in a single call to `summarise()`.
+
+A very useful summary is `n()`, which returns the number of rows in each group:
+
+```{r}
+summarise(by_month, delay = mean(dep_delay, na.rm = TRUE), n = n())
+```
+
+Combining Multiple Operations With The Pipe
+=============
+
+```{r eval=FALSE}
+flights %>% 
+  filter(!is.na(dep_delay)) %>% 
+  group_by(month) %>%
+  summarise(delay = mean(dep_delay), n = n())
+```
+
+When you see `%>%` in code, a good way to "pronounce" it in your head is as "then".
+
+That way you can read this code as a series of imperative statements: take the flights dataset, then filter it to remove rows with missing `dep_delay`, then group it by month, then summarise it with the average `dep_delay` and the number of observations.
+
+Behind the scenes:
+- `x %>% f(y)` turns into `f(x, y)`
+- `x %>% f(y) %>% g(z)` turns into `g(f(x, y), z)` and so on.
+
+You can use the pipe to rewrite multiple operations in a way that you can read left-to-right, top-to-bottom.
+
+
