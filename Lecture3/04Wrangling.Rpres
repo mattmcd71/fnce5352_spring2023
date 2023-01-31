@@ -1,0 +1,437 @@
+Data Wrangling
+========================================================
+author: Matthew McDonald
+date: 2/2/2022
+autosize: true
+
+<style>
+.small-code pre code {
+  font-size: 1em;
+}
+</style>
+
+```{r echo=FALSE}
+library(tidyverse)
+```
+
+readr Functions
+=========
+Most of readr's functions are concerned with turning flat files into data frames:
+
+-   `read_csv()` reads comma delimited files, `read_csv2()` reads semicolon separated files (common in countries where `,` is used as the decimal place), `read_tsv()` reads tab delimited files, and `read_delim()` reads in files with any delimiter.
+
+-   `read_fwf()` reads fixed width files.
+    You can specify fields either by their widths with `fwf_widths()` or their position with `fwf_positions()`.
+    `read_table()` reads a common variation of fixed width files where columns are separated by white space.
+
+-   `read_log()` reads Apache style log files.
+    (But also check out [webreadr](https://github.com/Ironholds/webreadr) which is built on top of `read_log()` and provides many more helpful tools.)
+    
+Other types of data
+==========
+
+- **readxl** reads Excel files (both `.xls` and `.xlsx`).
+
+- **googlesheets4** reads Google Sheets.
+
+- **DBI**, along with a database specific backend (e.g. **RMySQL**, **RSQLite**, **RPostgreSQL** etc) allows you to run SQL queries against a database and return a data frame.
+
+- **haven** reads SPSS, Stata, and SAS files.
+
+- For hierarchical data: use **jsonlite** (by Jeroen Ooms) for json, and **xml2** for XML.
+
+Fixing The IBM Data
+=========
+class: small-code
+```{r eval=FALSE}
+ibm <- read_csv('IBM.csv')
+ibm <- ibm %>% mutate(Date=as.Date(Date, format="%m/%d/%Y"))
+
+## OR:
+
+spec(ibm)
+ibm <- read_csv('IBM.csv', 
+                col_types = list(Date = col_date(format="%m/%d/%Y"),
+                                  Open = col_double(),
+                                  High = col_double(),
+                                  Low = col_double(),
+                                  Close = col_double(),
+                                  `Adj Close` = col_double(),
+                                  Volume = col_double()))
+
+ibm %>% ggplot(aes(x=Date, y=Close)) + geom_line()
+```
+
+Tidy Data
+===========
+
+There are three interrelated rules which make a dataset tidy:
+
+1.  Each variable must have its own column.
+2.  Each observation must have its own row.
+3.  Each value must have its own cell.
+
+Examples of Different Data Sets
+===========
+class:small-code
+```{r}
+table1
+```
+******
+```{r}
+table2
+```
+
+Examples of Different Data Sets (2)
+===========
+class:small-code
+```{r}
+table3
+```
+******
+```{r}
+table4a
+```
+```{r}
+table4b
+```
+
+Pivoting
+==========
+Common problems:
+
+1.  One variable might be spread across multiple columns.
+
+2.  One observation might be scattered across multiple rows.
+
+table4a
+=========
+class: small-code
+
+In `table4a` the column names `1999` and `2000` represent values of the `year` variable, the values in the `1999` and `2000` columns represent values of the `cases` variable, and each row represents two observations, not one.
+
+To tidy a dataset like this, we need to **pivot** the offending columns into a new pair of variables.
+To describe that operation we need three parameters:
+
+-   The set of columns whose names are values, not variables.
+    In this example, those are the columns `1999` and `2000`.
+
+-   The name of the variable to move the column names to: `year`.
+
+-   The name of the variable to move the column values to: `cases`.
+
+Together those parameters generate the call to `pivot_longer()`:
+
+pivot_longer()
+========
+class: small-code
+Together those parameters generate the call to `pivot_longer()`:
+
+```{r}
+table4a %>%
+  pivot_longer(
+    cols = c(`1999`, `2000`),
+    names_to = "year",
+    values_to = "cases"
+  )
+```
+
+table4 ggplot
+======
+class: small-code
+
+
+```{r eval=FALSE}
+table4a %>% pivot_longer(cols = c(`1999`, `2000`),
+                          names_to = "year",
+                          values_to = "cases") %>%
+  mutate(year = as.integer(year))
+  ggplot(aes(x = year, y = cases)) +
+  geom_line(aes(color = country) 
+```
+
+```{r echo=FALSE, fig.width=13, fig.height=5, fig.align='center' }
+table4a %>%
+  pivot_longer(cols = c(`1999`, `2000`),
+                names_to = "year",
+                values_to = "cases") %>%
+  mutate(year = as.integer(year)) %>%
+  ggplot(aes(x = year, y = cases)) +
+  geom_line(aes(color = country), size=2) +
+  scale_x_continuous(breaks = c(1999, 2000)) +
+  theme(text = element_text(size=30))
+```
+
+fixing table2
+=====
+class: small-code
+```{r}
+table2
+```
+
+pivot_wider()
+======
+class: small-code
+
+We need a data frame with `cases` and `population` as separate columns, and in those columns, each cell will hold the values of the relevant `count`s.
+Let's analyse the representation in similar way to `pivot_longer()`.
+This time, however, we only need two parameters:
+
+-   The column to take variable names from: `type`.
+
+-   The column to take values from: `count`.
+*******
+```{r}
+table2 %>%
+  pivot_wider(names_from = type, values_from = count)
+```
+
+Relational Data
+=========
+It's rare that a data analysis involves only a single data frame.
+Typically you have many data frames, and you must combine them to answer the questions that you're interested in.
+Collectively, multiple data frames are called **relational data** because it is the relations, not just the individual datasets, that are important.
+
+Relations are always defined between a pair of data frames.
+All other relations are built up from this simple idea: the relations of three or more data frames are always a property of the relations between each pair.
+Sometimes both elements of a pair can be the same data frame!
+This is needed if, for example, you have a data frame of people, and each person has a reference to their parents.
+
+Relational Data Verbs
+=========
+To work with relational data you need verbs that work with pairs of data frames.
+There are three families of verbs designed to work with relational data:
+
+-   **Mutating joins**, which add new variables to one data frame from matching observations in another.
+
+-   **Filtering joins**, which filter observations from one data frame based on whether or not they match an observation in the other data frame.
+
+-   **Set operations**, which treat observations as if they were set elements.
+
+RDBMS
+==========
+The most common place to find relational data is in a *relational* database management system (or RDBMS), a term that encompasses almost all modern databases.
+
+If you've used a database before, you've almost certainly used SQL.
+
+One other major terminology difference between databases and R is that what we generally refer to as data frames in R while the same concept is referred to as "table" in databases.
+
+nycflights13
+=======
+-   `flights` 2013 NYC flight data
+
+-   `airlines` lets you look up the full carrier name from its abbreviated code:
+
+-   `airports` gives information about each airport, identified by the `faa` airport code
+
+-   `planes` gives information about each plane, identified by its `tailnum`
+
+-   `weather` gives the weather at each NYC airport for each hour
+*******
+One way to show the relationships between the different data frames is with a diagram:
+
+```{r, echo = FALSE,}
+knitr::include_graphics("diagrams/relational-nycflights.png")
+```
+
+Keys
+=========
+The variables used to connect each pair of data frames are called **keys**.
+
+A key is a variable (or set of variables) that uniquely identifies an observation.
+
+In simple cases, a single variable is sufficient to identify an observation.
+
+For example, each plane is uniquely identified by its `tailnum`.
+
+In other cases, multiple variables may be needed.
+
+For example, to identify an observation in `weather` you need five variables: `year`, `month`, `day`, `hour`, and `origin`.
+
+Types of Keys
+===========
+There are two types of keys:
+
+-   A **primary key** uniquely identifies an observation in its own data frame.
+    For example, `planes$tailnum` is a primary key because it uniquely identifies each plane in the `planes` data frame.
+
+-   A **foreign key** uniquely identifies an observation in another data frame.
+    For example, `flights$tailnum` is a foreign key because it appears in the `flights` data frame where it matches each flight to a unique plane.
+
+A variable can be both a primary key *and* a foreign key.
+For example, `origin` is part of the `weather` primary key, and is also a foreign key for the `airports` data frame.
+
+Relations
+=======
+A primary key and the corresponding foreign key in another data frame form a **relation**. Relations are typically one-to-many.
+
+For example, each flight has one plane, but each plane has many flights. 
+
+You can model many-to-many relations with a many-to-1 relation plus a 1-to-many relation.
+
+For example, in this data there's a many-to-many relationship between airlines and airports: each airline flies to many airports; each airport hosts many airlines.
+
+Mutating Joins
+========
+class: small-code
+A mutating join allows you to combine variables from two data frames. It first matches observations by their keys, then copies across variables from one data frame to the other.
+
+```{r echo=FALSE}
+library(nycflights13)
+flights2 <- flights %>% 
+  select(year:day, hour, origin, dest, tailnum, carrier)
+```
+
+Imagine you want to add the full airline name to the `flights2` data.
+You can combine the `airlines` and `flights2` data frames with `left_join()`:
+
+```{r}
+flights2 %>%
+  select(-origin, -dest) %>% 
+  left_join(airlines, by = "carrier") %>% head()
+```
+
+Understanding Joins
+========
+The colored column represents the "key" variable: these are used to match the rows between the data frames.
+
+The grey column represents the "value" column that is carried along for the ride.
+
+A join is a way of connecting each row in `x` to zero, one, or more rows in `y`.
+****
+```{r echo=FALSE}
+knitr::include_graphics("diagrams/join-setup.png")
+
+x <- tribble(
+  ~key, ~val_x,
+     1, "x1",
+     2, "x2",
+     3, "x3"
+)
+y <- tribble(
+  ~key, ~val_y,
+     1, "y1",
+     2, "y2",
+     4, "y3"
+)
+```
+
+```{r echo=FALSE}
+knitr::include_graphics("diagrams/join-setup2.png")
+```
+
+Inner Join
+========
+class: small-code
+The simplest type of join is the **inner join**.
+An inner join matches pairs of observations whenever their keys are equal:
+
+```{r, echo = FALSE}
+knitr::include_graphics("diagrams/join-inner.png")
+```
+****
+```{r}
+x %>% 
+  inner_join(y, by = "key")
+```
+
+In an inner join, unmatched rows are not included in the result. Inner joins are usually not appropriate for use in analysis because it's too easy to lose observations.
+
+Outer Joins
+=======
+An inner join keeps observations that appear in both data frames.
+An **outer join** keeps observations that appear in at least one of the data frames.
+There are three types of outer joins:
+
+-   A **left join** keeps all observations in `x`.
+-   A **right join** keeps all observations in `y`.
+-   A **full join** keeps all observations in `x` and `y`.
+
+These joins work by adding an additional "virtual" observation to each data frame. This observation has a key that always matches (if no other key matches), and a value filled with `NA`.
+
+Visualizing Outer Joins
+=====
+
+```{r, echo = FALSE, out.height='30%', out.width='30%',  fig.align='center'}
+knitr::include_graphics("diagrams/join-outer.png")
+```
+
+Outer Joins in dplyr
+=========
+class: small-code
+
+```{r}
+left_join(x, y, by = "key")
+```
+
+```{r}
+right_join(x, y, by = "key")
+```
+*******
+```{r}
+full_join(x, y, by = "key")
+```
+
+Flight Data Joins
+=======
+class: small-code
+```{r}
+    flights2 %>% 
+      left_join(airports, c("origin" = "faa")) %>% head()
+```
+
+```{r}
+    flights2 %>% 
+      left_join(airports, c("origin" = "faa")) %>%
+      filter(is.na(name))
+```
+
+Working with Dates & Datetimes
+=========
+There are three types of date/time data that refer to an instant in time:
+
+-   A **date**.
+    Tibbles print this as `<date>`.
+
+-   A **time** within a day.
+    Tibbles print this as `<time>`.
+
+-   A **date-time** is a date plus a time: it uniquely identifies an instant in time (typically to the nearest second).
+    Tibbles print this as `<dttm>`.
+    
+-   To get the current date or date-time you can use `today()` or `now()`
+
+lubridate
+============
+The **lubridate** package makes it easier to work with dates and times in R.
+
+lubridate is not part of core tidyverse because you only need it when you're working with dates/times.
+
+```{r setup, message = FALSE}
+library(tidyverse)
+library(lubridate)
+```
+
+Creating Dates From Strings
+=========
+class: small-code
+The helpers provided by lubridate automatically work out the format once you specify the order of the component.
+
+To use them, identify the order in which year, month, and day appear in your dates, then arrange "y", "m", and "d" in the same order. That gives you the name of the lubridate function that will parse your date.
+*****
+```{r}
+ymd("2017-01-31")
+mdy("January 31st, 2017")
+dmy("31-Jan-2017")
+```
+
+Creating Dates from Components
+==========
+class: small-code
+To create a date/time from this sort of input, use `make_date()` for dates, or `make_datetime()` for date-times:
+
+```{r}
+flights %>% 
+  select(year, month, day, hour, minute) %>% 
+  mutate(departure = make_datetime(year, month, day, hour, minute))
+```

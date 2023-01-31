@@ -1,0 +1,418 @@
+Exploratory Data Analysis
+========================================================
+author: Matthew McDonald
+date: 2/2/2022
+autosize: true
+
+<style>
+.small-code pre code {
+  font-size: 1em;
+}
+</style>
+
+```{r echo=FALSE, warnings=FALSE}
+library(tidyverse)
+```
+
+
+Exporatory Data Analysis (EDA)
+===========
+
+EDA is an iterative cycle.
+
+- Generate questions about your data.
+
+- Search for answers by visualising, transforming, and modelling your data.
+
+- Use what you learn to refine your questions and/or generate new questions.
+
+Questions
+====
+
+Your goal during EDA is to develop an understanding of your data.
+
+The easiest way to do this is to use questions as tools to guide your investigation.
+
+EDA is fundamentally a creative process.
+
+And like most creative processes, the key to asking *quality* questions is to generate a large *quantity* of questions.
+
+Useful Questions 
+====
+
+1.  What type of variation occurs within my variables?
+
+2.  What type of covariation occurs between my variables?
+
+Tidy Data and Definitions
+==========
+
+-   A **variable** is a quantity, quality, or property that you can measure.
+
+-   A **value** is the state of a variable when you measure it.  The value of a variable may change from measurement to measurement.
+
+-   An **observation** (data point) is a set of measurements made under similar conditions. An observation will contain several values, each associated with a different variable.
+
+-   **Tabular data** is a set of values, each associated with a variable and an observation.
+
+    **Tabular data is *tidy* if each value is placed in its own "cell", each variable in its own column, and each observation in its own row.**
+    
+Variation 
+=========
+
+**Variation** is the tendency of the values of a variable to change from measurement to measurement.  You can see variation easily in real life; if you measure any continuous variable twice, you will get two different results.
+
+Every variable has its own pattern of variation, which can reveal interesting information.  The best way to understand that pattern is to visualise the distribution of the variable's values.
+
+Categorical Variables
+====
+
+A variable is **categorical** if it can only take one of a small set of values.  In R, categorical variables are usually saved as factors or character vectors.  To examine the distribution of a categorical variable, use a bar chart.
+***
+```{r eval=FALSE}
+ggplot(data = diamonds) +
+  geom_bar(mapping = aes(x = cut))
+```
+
+```{r echo=FALSE, fig.width=13, fig.height=8}
+ggplot(data = diamonds) +
+  geom_bar(mapping = aes(x = cut)) + 
+  theme(text = element_text(size=30))
+```
+ 
+
+Calculating Counts
+=====
+```{r}
+diamonds %>% 
+  count(cut)
+```
+****
+```{r}
+diamonds %>% 
+  group_by(cut) %>%
+  summarise(n=n())
+```
+
+Continuous Variables
+==========
+
+A variable is **continuous** if it can take any of an infinite set of ordered values. Numbers and date-times are two examples of continuous variables. To examine the distribution of a continuous variable, use a histogram
+***
+```{r eval=FALSE}
+ggplot(data = diamonds) +
+  geom_histogram(mapping = aes(x = carat), binwidth = 0.5)
+```
+
+```{r echo=FALSE, fig.width=13, fig.height=8}
+ggplot(data = diamonds) +
+  geom_histogram(mapping = aes(x = carat), binwidth = 0.5) + 
+  theme(text = element_text(size=30))
+```
+
+Using Count with Continuous Variables
+=====
+
+```{r}
+diamonds %>% 
+  count(cut_width(carat, 0.5))
+```
+
+Bin Width
+==========
+class: small-code
+```{r eval=FALSE}
+smaller <- diamonds %>%
+  filter(carat < 3)
+
+ggplot(data = filter(diamonds, carat < 3), mapping = aes(x = carat)) +
+  geom_histogram(binwidth = 0.1)
+```
+
+```{r echo=FALSE, fig.width=13, fig.height=6, fig.align='center'}
+ggplot(data = filter(diamonds, carat < 3), mapping = aes(x = carat)) +
+  geom_histogram(binwidth = 0.1) +
+  theme(text = element_text(size=30))
+```
+
+Plotting Multiple Histograms
+============
+```{r eval=FALSE}
+ggplot(data = smaller, mapping = aes(x = carat, colour = cut)) +
+  geom_freqpoly(binwidth = 0.1)
+```
+
+```{r  echo=FALSE, fig.width=13, fig.height=6, fig.align='center'}
+ggplot(data = filter(diamonds, carat < 3), mapping = aes(x = carat, colour = cut)) +
+  geom_freqpoly(binwidth = 0.1, size=2) +
+  theme(text = element_text(size=30))
+```
+
+Questions
+===========
+
+Now that you can visualise variation, what should you look for in your plots?
+
+And what type of follow-up questions should you ask?
+
+The key to asking good follow-up questions will be to rely on your curiosity (What do you want to learn more about?) as well as your skepticism (How could this be misleading?).
+
+Typical Values
+=====
+
+-   Which values are the most common? Why?
+
+-   Which values are rare? Why? Does that match your expectations?
+
+-   Can you see any unusual patterns? What might explain them?
+
+Example
+=====
+-   Why are there more diamonds at whole carats and common fractions of carats?
+
+-   Why are there more diamonds slightly to the right of each peak than there are slightly to the left of each peak?
+******
+```{r echo=FALSE}
+smaller <- diamonds %>%
+  filter(carat < 3)
+
+ggplot(data = smaller, mapping = aes(x = carat)) +
+  geom_histogram(binwidth = 0.01) +  
+  theme(text = element_text(size=30))
+```
+
+Clusters
+=======
+
+Clusters of similar values suggest that subgroups exist in your data.
+To understand the subgroups, ask:
+
+-   How are the observations within each cluster similar to each other?
+
+-   How are the observations in separate clusters different from each other?
+
+Example
+=======
+
+The histogram below shows the length (in minutes) of 272 eruptions of the Old Faithful Geyser in Yellowstone National Park.
+
+Eruption times appear to be clustered into two groups: there are short eruptions (of around 2 minutes) and long eruptions (4-5 minutes), but little in between.
+
+-   How can you explain or describe the clusters?
+
+-   Why might the appearance of clusters be misleading?
+*********
+```{r echo=FALSE}
+ggplot(data = faithful, mapping = aes(x = eruptions)) + 
+  geom_histogram(binwidth = 0.25) +  
+  theme(text = element_text(size=30))
+```
+
+Unusual Values
+========
+
+Outliers are observations that are unusual; data points that don't seem to fit the pattern.
+
+Sometimes outliers are data entry errors; other times outliers suggest important new science.
+
+When you have a lot of data, outliers are sometimes difficult to see in a histogram.
+
+Example
+=======
+For example, take the distribution of the `y` variable from the diamonds dataset.
+
+The only evidence of outliers is the unusually wide limits on the x-axis.
+*****
+```{r echo=FALSE}
+ggplot(diamonds) + 
+  geom_histogram(mapping = aes(x = y), binwidth = 0.5) +  
+  theme(text = element_text(size=30))
+```
+
+Unusual Observations
+=======
+class: small-code
+The `y` variable measures one of the three dimensions of these diamonds, in mm. 
+
+We know that diamonds can't have a width of 0mm, so these values must be incorrect. 
+
+We might also suspect that measurements of 32mm and 59mm are implausible: those diamonds are over an inch long, but don't cost hundreds of thousands of dollars!
+***
+
+```{r}
+unusual <- diamonds %>% 
+  filter(y < 3 | y > 20) %>% 
+  select(price, x, y, z) %>%
+  arrange(y)
+unusual
+```
+
+Covariation
+========
+
+If variation describes the behavior *within* a variable, covariation describes the behavior *between* variables.
+
+**Covariation** is the tendency for the values of two or more variables to vary together in a related way.
+
+The best way to spot covariation is to visualise the relationship between two or more variables.
+
+How you do that should again depend on the type of variables involved.
+
+Boxplots
+========
+
+A **boxplot** is a type of visual shorthand for a distribution of values that is popular among statisticians.
+Each boxplot consists of:
+
+-   A box that stretches from the 25th percentile of the distribution to the 75th percentile, a distance known as the interquartile range (IQR).  In the middle of the box is a line that displays the median, i.e. 50th percentile, of the distribution. These three lines give you a sense of the spread of the distribution and whether or not the distribution is symmetric about the median or skewed to one side.
+
+-   Visual points that display observations that fall more than 1.5 times the IQR from either edge of the box.
+
+-   A line (or whisker) that extends from each end of the box and goes to the farthest non-outlier point in the distribution.
+
+Example Boxplot
+=======
+
+```{r eval=FALSE}
+ggplot(data = diamonds, mapping = aes(x = cut, y = price)) +
+  geom_boxplot()
+```
+
+```{r echo=FALSE, fig.width=13, fig.height=6, fig.align='center'}
+ggplot(data = diamonds, mapping = aes(x = cut, y = price)) +
+  geom_boxplot() +
+  theme(text = element_text(size=30))
+```
+
+Cleaning Up A Boxplot
+=========
+class: small-code
+```{r eval = FALSE}
+ggplot(data = mpg) +
+  geom_boxplot(mapping = aes(x = reorder(class, hwy, FUN = median), y = hwy)) +
+  coord_flip()
+```
+
+```{r echo=FALSE, fig.width=13, fig.height=6, fig.align='center'}
+ggplot(data = mpg) +
+  geom_boxplot(mapping = aes(x = reorder(class, hwy, FUN = median), y = hwy)) +
+  coord_flip() +
+  theme(text = element_text(size=30))
+```
+
+Two Categorical Variables
+========
+class: small-code
+To visualise the covariation between categorical variables, you'll need to count the number of observations for each combination.
+One way to do that is to rely on the built-in `geom_count()`:
+***
+```{r eval=FALSE}
+ggplot(data = diamonds) +
+  geom_count(mapping = aes(x = cut, y = color))
+```
+
+```{r echo=FALSE, fig.height=6}
+ggplot(data = diamonds) +
+  geom_count(mapping = aes(x = cut, y = color)) +
+  theme(text = element_text(size=30), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) 
+```
+
+Two Continuous Variables
+=======
+class: small-code
+You've already seen one great way to visualise the covariation between two continuous variables: draw a scatterplot with `geom_point()`.
+
+You can see covariation as a pattern in the points.
+
+For example, you can see an exponential relationship between the carat size and price of a diamond.
+********
+```{r fig.height=6}
+ggplot(data = diamonds) +
+  geom_point(mapping = aes(x = carat, y = price)) +
+  theme(text = element_text(size=30))
+```
+
+Overplotting
+=======
+class: small-code
+Scatterplots become less useful as the size of your dataset grows, because points begin to overplot, and pile up into areas of uniform black (as above).
+
+Using the `alpha` aesthetic to add transparency can address the problem
+********
+```{r fig.height=6}
+ggplot(data = diamonds) +
+  geom_point(mapping = aes(x = carat, y = price), alpha = 1 / 100) +
+  theme(text = element_text(size=30))
+```
+
+## Patterns and models
+
+Patterns in your data provide clues about relationships.
+
+If a systematic relationship exists between two variables it will appear as a pattern in the data.
+
+If you spot a pattern, ask yourself:
+
+-   Could this pattern be due to coincidence (i.e. random chance)?
+
+-   How can you describe the relationship implied by the pattern?
+
+-   How strong is the relationship implied by the pattern?
+
+-   What other variables might affect the relationship?
+
+-   Does the relationship change if you look at individual subgroups of the data?
+
+Patterns and Covariation
+======
+Patterns provide one of the most useful tools for data scientists because they reveal covariation.
+
+If you think of variation as a phenomenon that creates uncertainty, covariation is a phenomenon that reduces it.
+
+If two variables covary, you can use the values of one variable to make better predictions about the values of the second.
+
+If the covariation is due to a causal relationship (a special case), then you can use the value of one variable to control the value of the second.
+
+
+
+Models
+========
+Models are a tool for extracting patterns out of data.
+
+For example, consider the diamonds data.
+
+It's hard to understand the relationship between cut and price, because cut and carat, and carat and price are tightly related.
+
+It's possible to use a model to remove the very strong relationship between price and carat so we can explore the subtleties that remain.
+
+Fitting a Model
+======
+class: small-code
+This code fits a model that predicts `price` from `carat` and then computes the residuals.
+
+The residuals give us a view of the price of the diamond, once the effect of carat has been removed.
+
+Once you've removed the strong relationship between carat and price, you can see what you expect in the relationship between cut and price: relative to their size, better quality diamonds are more expensive.
+*****
+```{r}
+library(modelr)
+
+mod <- lm(log(price) ~ log(carat), data = diamonds)
+
+diamonds2 <- diamonds %>% 
+  add_residuals(mod) %>% 
+  mutate(resid = exp(resid))
+```
+
+The Updated Diamonds Plot
+========
+```{r eval=FALSE}
+ggplot(data = diamonds2) + 
+  geom_boxplot(mapping = aes(x = cut, y = resid))
+```
+
+```{r echo=FALSE, fig.width=13, fig.height=6, fig.align='center'}
+ggplot(data = diamonds2) + 
+  geom_boxplot(mapping = aes(x = cut, y = resid)) +
+  theme(text = element_text(size=30))
+```
