@@ -1,0 +1,137 @@
+---
+title: "1 - Introduction"
+subtitle: "Machine learning with tidymodels"
+format:
+  revealjs: 
+    slide-number: true
+    footer: <https://workshops.tidymodels.org>
+    include-before-body: header.html
+    include-after-body: footer-annotations.html
+    theme: [default, tidymodels.scss]
+    width: 1280
+    height: 720
+knitr:
+  opts_chunk: 
+    echo: true
+    collapse: true
+    comment: "#>"
+---
+
+```{r}
+#| include: false
+hexes <- function(..., size = 64) {
+  x <- c(...)
+  x <- sort(unique(x))
+  right <- (seq_along(x) - 1) * size
+
+  res <- glue::glue(
+    '![](hexes/<x>.png){.absolute top=-20 right=<right> width="<size>" height="<size * 1.16>"}',
+    .open = "<", .close = ">"
+  )
+
+  paste0(res, collapse = " ")
+}
+
+knitr::opts_chunk$set(
+  digits = 3,
+  comment = "#>",
+  dev = 'svglite'
+)
+
+# devtools::install_github("gadenbuie/countdown")
+library(countdown)
+library(ggplot2)
+theme_set(theme_bw())
+options(cli.width = 70)
+
+train_color <- "#1a162d"
+test_color  <- "#cd4173"
+data_color  <- "#767381"
+assess_color <- "#84cae1"
+splits_pal <- c(data_color, train_color, test_color)
+
+```
+
+## What is machine learning?
+
+![](https://imgs.xkcd.com/comics/machine_learning.png){fig-align="center"}
+
+::: footer
+<https://xkcd.com/1838/>
+:::
+
+## What is machine learning?
+
+![](images/what_is_ml.jpg){fig-align="center"}
+
+::: footer
+Illustration credit: <https://vas3k.com/blog/machine_learning/>
+:::
+
+## What is machine learning?
+
+![](images/ml_illustration.jpg){fig-align="center"}
+
+::: footer
+Illustration credit: <https://vas3k.com/blog/machine_learning/>
+:::
+
+## What is tidymodels?
+
+```{r}
+#| message: true
+library(tidymodels)
+```
+
+## Data spending
+
+![](images/whole-game-split.svg){fig-align="center"}
+
+## A first model
+
+![](images/whole-game-logistic.svg){fig-align="center"}
+
+## Try another model
+
+![](images/whole-game-boost.svg){fig-align="center"}
+
+## Choose wisely...
+
+![](images/whole-game-select.svg)
+
+## Finalize and verify {.annotation}
+
+![](images/whole-game-final.svg){fig-align="center"}
+
+## ... and so on
+
+Once we find an acceptable model and feature set, the process is to
+
+-   Confirm our results on the test set.
+-   Document the data and model development process.
+-   Deploy, monitor, etc.
+
+## Data splitting and spending
+
+For machine learning, we typically split data into training and test sets:
+
+. . .
+
+-   The **training set** is used to estimate model parameters.
+-   The **test set** is used to find an independent assessment of model performance.
+
+. . .
+
+Do not 🚫 use the test set during training.
+
+## Data splitting and spending
+
+# The more data<br>we spend 🤑<br><br>the better estimates<br>we'll get.
+
+## Data splitting and spending
+
+-   Spending too much data in **training** prevents us from computing a good assessment of predictive **performance**.
+
+. . .
+
+-   Spending too much data in **testing** prevents us from computing a good estimate of model **parameters**.
