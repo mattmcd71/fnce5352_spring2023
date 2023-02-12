@@ -1,0 +1,144 @@
+---
+title: "Evaluating Models"
+format:
+  revealjs: 
+    slide-number: true
+    theme: [default, tidymodels.scss]
+    width: 1280
+    height: 720
+knitr:
+  opts_chunk: 
+    echo: true
+    collapse: true
+    comment: "#>"
+---
+
+```{r}
+#| include: false
+#| file: setup.R
+```
+
+## Metrics for model performance
+
+```{r}
+#| echo: false
+library(tidymodels)
+library(countdown)
+library(tidyverse)
+data("tree_frogs", package = "stacks")
+tree_frogs <- tree_frogs %>%
+  mutate(t_o_d = factor(t_o_d),
+         age = age / 86400) %>% 
+  filter(!is.na(latency)) %>%
+  select(-c(clutch, hatched))
+
+set.seed(123)
+frog_split <- initial_split(tree_frogs, prop = 0.8, strata = latency)
+frog_train <- training(frog_split)
+frog_test <- testing(frog_split)
+tree_spec <- decision_tree(cost_complexity = 0.001, mode = "regression")
+tree_wflow <- workflow(latency ~ ., tree_spec)
+tree_fit <- fit(tree_wflow, frog_train)
+```
+
+```{r}
+augment(tree_fit, new_data = frog_test) %>%
+  metrics(latency, .pred)
+```
+
+. . .
+
+-   RMSE: difference between the predicted and observed values ⬇️
+-   $R^2$: squared correlation between the predicted and observed values ⬆️
+-   MAE: similar to RMSE, but mean absolute error ⬇️
+
+## Metrics for model performance
+
+```{r}
+augment(tree_fit, new_data = frog_test) %>%
+  rmse(latency, .pred)
+```
+
+## Metrics for model performance
+
+```{r}
+augment(tree_fit, new_data = frog_test) %>%
+  group_by(reflex) %>%
+  rmse(latency, .pred)
+```
+
+# ⚠️ DANGERS OF OVERFITTING ⚠️
+
+## Dangers of overfitting ⚠️
+
+```{r overfitting1}
+#| echo: false
+#| out-width: '70%'
+#| fig-align: 'center'
+knitr::include_graphics("images/tuning-overfitting-train-1.svg")
+```
+
+## Dangers of overfitting ⚠️
+
+```{r overfitting2}
+#| echo: false
+#| out-width: '70%'
+#| fig-align: 'center'
+knitr::include_graphics("images/tuning-overfitting-test-1.svg")
+```
+
+We call this "resubstitution" or "repredicting the training set"
+
+. . .
+
+What if we want to compare more models?
+
+. . .
+
+And/or more model configurations?
+
+. . .
+
+And we want to understand if these are important differences?
+
+# The testing data are precious 💎
+
+# How can we use the *training* data to compare and evaluate different models? 🤔
+
+## Resampling
+```{r resampling1}
+#| echo: false
+#| out-width: '70%'
+#| fig-align: 'center'
+knitr::include_graphics("images/resampling.svg")
+```
+
+## Cross-validation
+
+```{r cv1}
+#| echo: false
+#| out-width: '70%'
+#| fig-align: 'center'
+knitr::include_graphics("images/three-CV.svg")
+```
+
+
+## Cross-validation
+
+```{r cv2}
+#| echo: false
+#| out-width: '70%'
+#| fig-align: 'center'
+knitr::include_graphics("images/three-CV-iter.svg")
+```
+
+# Alternate resampling schemes
+
+## Bootstrapping
+
+```{r boot1}
+#| echo: false
+#| out-width: '70%'
+#| fig-align: 'center'
+knitr::include_graphics("images/bootstraps.svg")
+```
