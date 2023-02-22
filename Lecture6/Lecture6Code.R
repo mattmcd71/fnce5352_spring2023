@@ -14,7 +14,10 @@ Chicago_copy <-
   Chicago %>% 
   mutate(day = wday(date, label = TRUE, abbr = FALSE),
          month = month(date))
-Chicago_copy %>% ggplot(aes(x=ridership)) + geom_density() + facet_grid(day ~month)
+
+Chicago_copy %>% ggplot(aes(x=ridership)) + 
+  geom_density() + 
+  facet_grid(day ~month)
 
 Chicago_copy %>% 
   ggplot(aes(x = day, y = ridership)) + 
@@ -64,7 +67,10 @@ chi_folds %>% nrow()
 # ------------------------------------------------------------------------------
 # Linear Regression Analysis (slide 20)
 
-lm(ridership ~ . - date, data = Chicago)
+simplestmodel <- lm(ridership ~ . - date, data = Chicago)
+
+cor(Chicago$Irving_Park, Chicago$Belmont)
+plot(Chicago$Irving_Park, Chicago$Belmont)
 
 lm(ridership ~ Irving_Park, data=Chicago) %>% summary
 lm(ridership ~ Belmont, data=Chicago) %>% summary
@@ -352,4 +358,4 @@ final_mars_wfl %>%
   # Pull out the model
   pull_workflow_fit() %>%
   vip(num_features = 20L, type = "gcv")
-
+  
